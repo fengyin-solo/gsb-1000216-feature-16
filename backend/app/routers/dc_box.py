@@ -30,6 +30,22 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出汇流箱管理清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "dc_box", "total": total, "items": items}
+
+
+@router.post("/{entry_id}/retry", response_model=ActionResult)
+def retry_collection(entry_id: int) -> ActionResult:
+    """对缺少输入支路或采集中断的汇流箱重新采集；恢复后按新批次重新计算。"""
+    entry, message = service.retry_collection(entry_id)
+    if entry is None:
+        return ActionResult(ok=False, message=message)
+    return ActionResult(ok=True, message=message, entry=entry)
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条汇流箱明细；不存在时给出可读的错误说明。"""
@@ -56,10 +72,3 @@ def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出汇流箱管理清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "dc_box", "total": total, "items": items}
